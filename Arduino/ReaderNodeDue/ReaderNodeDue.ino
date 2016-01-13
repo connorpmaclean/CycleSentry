@@ -15,6 +15,13 @@
 #define rxPin      19  // Serial input (connects to the RFID's SOUT pin)
 #define txPin      20  // Serial output (unused)
 
+#define tonePin	   10
+#define toneHz	   440
+#define toneLength 500
+
+#define highPin    51
+#define toneSwitchPin 53
+
 #define BUFSIZE    11  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
 
 #define RFID_START  0x0A  // RFID Reader Start and Stop bytes
@@ -26,15 +33,15 @@ String previous = "";
 
 void setup()  // Set up code called once on start-up
 {
-  pinMode(10, OUTPUT);
-  noTone(10);
+  pinMode(tonePin, OUTPUT);
+  noTone(tonePin);
   // define pin modes
   pinMode(enablePin, OUTPUT);
   pinMode(rxPin, INPUT);
   
-  pinMode(51, OUTPUT);
-  pinMode(53, INPUT);
-  digitalWrite(51, HIGH);
+  pinMode(highPin, OUTPUT);
+  pinMode(toneSwitchPin, INPUT);
+  digitalWrite(highPin, HIGH);
   
 
   digitalWrite(enablePin, HIGH);  // disable RFID Reader
@@ -84,8 +91,8 @@ void loop()  // Main code, to run repeatedly
   }
 	
   if(!previous.equals(current)){
-	  if(digitalRead(53) == HIGH)
-		tone(10, 440, 500);
+	  if(digitalRead(toneSwitchPin) == HIGH)
+		tone(tonePin, toneHz, toneLength);
 	  Serial.println(current);
   }
 	

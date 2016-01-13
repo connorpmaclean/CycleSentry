@@ -23,9 +23,6 @@
 // Enter a MAC address for your controller below.
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-// if you don't want to use DNS (and reduce your sketch size)
-// use the numeric IP instead of the name for the server:
-//IPAddress server(159,203,112,6);  // numeric IP for Google (no DNS)
 char server[] = "www.cyclesentry.xyz";    // name address for Google (using DNS)
 
 // Set the static IP address to use if the DHCP fails to assign
@@ -37,7 +34,7 @@ IPAddress ip(192, 168, 0, 177);
 EthernetClient client;
 SoftwareSerial xbeeSerial(2, 3); // RX, TX
 
-//TODO string completeion, look at serial event online.
+
 boolean stringComplete = false;  // whether the string is complete
 String incoming = "";
 
@@ -45,8 +42,9 @@ void setup() {
   
   // Open serial communications and wait for port to open:
 
-  Serial.println("Connecting to USB...");
+  
   Serial.begin(9600);
+  Serial.println("Connecting to USB...");
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
@@ -87,25 +85,7 @@ void setup() {
 }
 
 void makeRequest(String req){
-  Serial.print("connecting...");
-
-  // if you get a connection, report back via serial:
-  if (client.connect(server, 80)) {
-    Serial.print("connected. ");
-    // Make a HTTP request:
-    client.println(req);
-    Serial.println("Sent request: " + req);
-   
-    client.println("Host: www.cyclesentry.xyz");
-    client.println("Connection: close");
-    client.println();
-  } else {
-    // if you didn't get a connection to the server:
-    Serial.println("connection failed");
-  }
-
-  client.stop();
-
+	makeRequest(req, false);
   
 }
 
@@ -120,7 +100,7 @@ void makeRequest(String req, bool printResponse){
     Serial.println("Sent request: " + req);
    
     
-    //client.println("Host: www.cyclesentry.xyz");
+    client.println("Host: www.cyclesentry.xyz");
     client.println("Connection: close");
     client.println();
   } else {
@@ -130,8 +110,7 @@ void makeRequest(String req, bool printResponse){
 
   if(printResponse)
     getResponse();
-  else
-    client.stop();
+  client.stop();
 }
 
 String getResponse(){
@@ -143,7 +122,6 @@ String getResponse(){
     
   }
   Serial.println("disconnecting.");
-  client.stop();
 
   return "";
 }

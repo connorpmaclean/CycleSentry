@@ -25,8 +25,8 @@
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 // if you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
-IPAddress server(159,203,112,6);  // numeric IP for Google (no DNS)
-//char server[] = "www.google.com";    // name address for Google (using DNS)
+//IPAddress server(159,203,112,6);  // numeric IP for Google (no DNS)
+char server[] = "www.cyclesentry.xyz";    // name address for Google (using DNS)
 
 // Set the static IP address to use if the DHCP fails to assign
 IPAddress ip(192, 168, 0, 177);
@@ -35,7 +35,7 @@ IPAddress ip(192, 168, 0, 177);
 // with the IP address and port of the server
 // that you want to connect to (port 80 is default for HTTP):
 EthernetClient client;
-SoftwareSerial xbeeSerial(4, 5); // RX, TX
+SoftwareSerial xbeeSerial(2, 3); // RX, TX
 
 //TODO string completeion, look at serial event online.
 boolean stringComplete = false;  // whether the string is complete
@@ -90,13 +90,13 @@ void makeRequest(String req){
   Serial.print("connecting...");
 
   // if you get a connection, report back via serial:
-  if (client.connect(server, 8080)) {
+  if (client.connect(server, 80)) {
     Serial.print("connected. ");
     // Make a HTTP request:
     client.println(req);
     Serial.println("Sent request: " + req);
    
-    
+    client.println("Host: www.cyclesentry.xyz");
     client.println("Connection: close");
     client.println();
   } else {
@@ -113,13 +113,14 @@ void makeRequest(String req, bool printResponse){
   Serial.print("connecting...");
 
   // if you get a connection, report back via serial:
-  if (client.connect(server, 8080)) {
+  if (client.connect(server, 80)) {
     Serial.print("connected. ");
     // Make a HTTP request:
     client.println(req);
     Serial.println("Sent request: " + req);
    
     
+    //client.println("Host: www.cyclesentry.xyz");
     client.println("Connection: close");
     client.println();
   } else {
@@ -170,7 +171,10 @@ void loop() {
   }
 
   if (stringComplete) {
-    Serial.println(incoming + "-END");
+    //Serial.println(incoming + "-END");
+	makeRequest("GET /api/updateTag/" + incoming.substring(0,10)+ "/1 HTTP/1.1", true);
+	//makeRequest("GET /api/echo/" + incoming.substring(0,10)+ " HTTP/1.1", true);
+	//makeRequest("GET /api/echo/aaa HTTP/1.1", true);
     // clear the string:
     incoming = "";
     stringComplete = false;

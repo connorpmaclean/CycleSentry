@@ -32,13 +32,17 @@ void setup()  // Set up code called once on start-up
   pinMode(enablePin, OUTPUT);
   pinMode(rxPin, INPUT);
   
+  pinMode(51, OUTPUT);
+  pinMode(53, INPUT);
+  digitalWrite(51, HIGH);
+  
 
   digitalWrite(enablePin, HIGH);  // disable RFID Reader
   
   // setup Arduino Serial Monitor
   Serial.begin(9600);
   while (!Serial);   // wait until ready
-  Serial.println("\n\nParallax RFID Card Reader");
+  Serial.println("READER READY");
   
   // set the baud rate for the SoftwareSerial port
   Serial1.begin(2400);
@@ -79,10 +83,14 @@ void loop()  // Main code, to run repeatedly
     }
   }
 	
-  if(!previous.equals(current))
-	tone(10, 440, 500);
+  if(!previous.equals(current)){
+	  if(digitalRead(53) == HIGH)
+		tone(10, 440, 500);
+	  Serial.println(current);
+  }
+	
   
-  Serial.println(previous + ", " + current);       // The rfidData string should now contain the tag's unique ID with a null termination, so display it on the Serial Monitor
+  //Serial.println(previous + ", " + current);       // The rfidData string should now contain the tag's unique ID with a null termination, so display it on the Serial Monitor
   Serial.flush();                 // Wait for all bytes to be transmitted to the Serial Monitor
 }
 

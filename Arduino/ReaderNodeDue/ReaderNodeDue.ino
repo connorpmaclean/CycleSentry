@@ -22,7 +22,8 @@
 #define highPin    51
 #define toneSwitchPin 53
 
-#define BUFSIZE    11  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
+#define BUFSIZE    10  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
+#define TABLESIZE  200  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
 
 #define RFID_START  0x0A  // RFID Reader Start and Stop bytes
 #define RFID_STOP   0x0D
@@ -30,6 +31,11 @@
 
 String current = "";
 String previous = "";
+
+String rfidData;
+
+unsigned long timeoutTable[TABLESIZE];
+char idTable[TABLESIZE][BUFSIZE];
 
 void setup()  // Set up code called once on start-up
 {
@@ -54,51 +60,90 @@ void setup()  // Set up code called once on start-up
   // set the baud rate for the SoftwareSerial port
   Serial1.begin(2400);
 
-  Serial.flush();   // wait for all bytes to be transmitted to the Serial Monitor
-}
-
-void loop()  // Main code, to run repeatedly
-{
+  //Serial.flush();   // wait for all bytes to be transmitted to the Serial Monitor
+  
+  
   digitalWrite(enablePin, LOW);   // enable the RFID Reader
   
   // Wait for a response from the RFID Reader
   // See Arduino readBytesUntil() as an alternative solution to read data from the reader
-  char rfidData[BUFSIZE];  // Buffer for incoming data
-  char offset = 0;         // Offset into buffer
-  rfidData[0] = 0;         // Clear the buffer    
   
-  while(1)
-  {
-    if (Serial1.available() > 0) // If there are any bytes available to read, then the RFID Reader has probably seen a valid tag
+  rfidData.reserve(BUFSIZE);  // Buffer for incoming data
+  
+  for(int i = 0; i<TABLESIZE; i++){
+	  timeoutTable[i] = 0;
+  }
+}
+
+void loop()  // Main code, to run repeatedly
+{
+  
+  
+  
+    while (Serial1.available() > 0) // If there are any bytes available to read, then the RFID Reader has probably seen a valid tag
     {
-      rfidData[offset] = Serial1.read();  // Get the byte and store it in our buffer
+      char nextByte = Serial1.read();  // Get the byte and store it in our buffer
       
-      if (rfidData[offset] == RFID_START)    // If we receive the start byte from the RFID Reader, then get ready to receive the tag's unique ID
+      if (nextByte == RFID_START)    // If we receive the start byte from the RFID Reader, then get ready to receive the tag's unique ID
       {
-        offset = -1;     // Clear offset (will be incremented back to 0 at the end of the loop)
+        rfidData = "";
       }
-      else if (rfidData[offset] == RFID_STOP)  // If we receive the stop byte from the RFID Reader, then the tag's entire unique ID has been sent
+      else if (nextByte == RFID_STOP)  // If we receive the stop byte from the RFID Reader, then the tag's entire unique ID has been sent
       {
-		previous = current;
-        rfidData[offset] = 0; // Null terminate the string of bytes we just received
-        current = String(rfidData);
-        break;                // Break out of the loop
+		tagComplete();
       }
-          
-      offset++;  // Increment offset into array
-      if (offset >= BUFSIZE) offset = 0; // If the incoming data string is longer than our buffer, wrap around to avoid going out-of-bounds
+	  else if(nextByte == 0);
+      else{
+		  rfidData += nextByte;
+	  }
+	  
+	  if(rfidData.length() > BUFSIZE)
+		  rfidData = "CORRUPT";
     }
+  
+	unsigned long nowMS = millis();
+  for(int i = 0; i<TABLESIZE; i++){
+	  if(timeoutTable[i] != 0)
+		  if(nowMS - timeoutTable[i] > 1000){
+			  Serial.print("Timeout - ");
+			  Serial.println(idTable[i]);	//THERE IS A NULL BYTE AT THE END
+			  if(idTable[i][11] == 0)
+				  Serial.println("NULL BYTE FUCK");
+			  timeoutTable[i] = 0;
+		  }
+			  
+	  
   }
-	
-  if(!previous.equals(current)){
-	  if(digitalRead(toneSwitchPin) == HIGH)
-		tone(tonePin, toneHz, toneLength);
-	  Serial.println(current);
-  }
+  
+  //Serial.println(idHash(current));
 	
   
   //Serial.println(previous + ", " + current);       // The rfidData string should now contain the tag's unique ID with a null termination, so display it on the Serial Monitor
-  Serial.flush();                 // Wait for all bytes to be transmitted to the Serial Monitor
+  
+}
+
+void tagComplete(){
+	previous = current;
+    current = String(rfidData);
+		
+	if(!previous.equals(current)){
+		if(digitalRead(toneSwitchPin) == HIGH)
+			tone(tonePin, toneHz, toneLength);
+		Serial.println(current);
+	  
+	}
+	//Serial.flush();                 // Wait for all bytes to be transmitted to the Serial Monitor
+	
+	timeoutTable[idHash(current)] = millis();
+	current.toCharArray(idTable[idHash(current)], BUFSIZE+1);
+}
+
+int idHash(String id){
+	int result = 0;
+	for(int i = 0; i < BUFSIZE; i++){
+		result += id.charAt(i);
+	}
+	result = result % TABLESIZE;
 }
 
 

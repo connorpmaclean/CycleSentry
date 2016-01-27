@@ -24,6 +24,7 @@
 
 #define BUFSIZE    10  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
 #define TABLESIZE  200  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
+#define TIMEOUT 2000
 
 #define RFID_START  0x0A  // RFID Reader Start and Stop bytes
 #define RFID_STOP   0x0D
@@ -33,6 +34,7 @@ String current = "";
 String previous = "";
 
 String rfidData;
+bool alarmOn;
 
 unsigned long timeoutTable[TABLESIZE];
 char idTable[TABLESIZE][BUFSIZE];
@@ -49,6 +51,11 @@ void setup()  // Set up code called once on start-up
   pinMode(toneSwitchPin, INPUT);
   digitalWrite(highPin, HIGH);
   
+   for(int i = 0; i<TABLESIZE; i++){
+	  timeoutTable[i] = 0;
+  }
+  
+    rfidData.reserve(BUFSIZE);  // Buffer for incoming data
 
   digitalWrite(enablePin, HIGH);  // disable RFID Reader
   
@@ -68,11 +75,9 @@ void setup()  // Set up code called once on start-up
   // Wait for a response from the RFID Reader
   // See Arduino readBytesUntil() as an alternative solution to read data from the reader
   
-  rfidData.reserve(BUFSIZE);  // Buffer for incoming data
+
   
-  for(int i = 0; i<TABLESIZE; i++){
-	  timeoutTable[i] = 0;
-  }
+ 
 }
 
 void loop()  // Main code, to run repeatedly
@@ -102,23 +107,16 @@ void loop()  // Main code, to run repeatedly
     }
   
 	unsigned long nowMS = millis();
-  for(int i = 0; i<TABLESIZE; i++){
+	for(int i = 0; i<TABLESIZE; i++){
 	  if(timeoutTable[i] != 0)
-		  if(nowMS - timeoutTable[i] > 1000){
+		  if(nowMS - timeoutTable[i] > TIMEOUT){
 			  Serial.print("Timeout - ");
-			  Serial.println(idTable[i]);	//THERE IS A NULL BYTE AT THE END
-			  if(idTable[i][11] == 0)
-				  Serial.println("NULL BYTE FUCK");
+			  Serial.println(cToInoString(idTable[i]));
 			  timeoutTable[i] = 0;
 		  }
-			  
-	  
-  }
+	}
   
-  //Serial.println(idHash(current));
-	
-  
-  //Serial.println(previous + ", " + current);       // The rfidData string should now contain the tag's unique ID with a null termination, so display it on the Serial Monitor
+ 
   
 }
 
@@ -130,6 +128,7 @@ void tagComplete(){
 		if(digitalRead(toneSwitchPin) == HIGH)
 			tone(tonePin, toneHz, toneLength);
 		Serial.println(current);
+		Serial.println(idHash(current));
 	  
 	}
 	//Serial.flush();                 // Wait for all bytes to be transmitted to the Serial Monitor
@@ -137,13 +136,24 @@ void tagComplete(){
 	timeoutTable[idHash(current)] = millis();
 	current.toCharArray(idTable[idHash(current)], BUFSIZE+1);
 }
-
+//FIX HASHING FUNCTION
 int idHash(String id){
-	int result = 0;
+	int result = 1;
 	for(int i = 0; i < BUFSIZE; i++){
-		result += id.charAt(i);
+		result *= id.charAt(i)% TABLESIZE;
 	}
-	result = result % TABLESIZE;
+	//result = result % TABLESIZE;
+}
+
+String cToInoString(char* cstring){
+	int i = 0;
+	String inoString = "";
+	while(cstring[i] != 0){
+		inoString += cstring[i];
+		i++;
+	}
+		
+	return inoString;
 }
 
 

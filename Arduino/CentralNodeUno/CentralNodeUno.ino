@@ -18,6 +18,8 @@
 #include <Ethernet.h>
 #include <SoftwareSerial.h>
 
+#define ALARM_FREQ 5000
+
 //#include <Time.h>  
 
 // Enter a MAC address for your controller below.
@@ -38,10 +40,12 @@ SoftwareSerial xbeeSerial(2, 3); // RX, TX
 boolean stringComplete = false;  // whether the string is complete
 String incoming = "";
 
+unsigned long lastAlarmTime;
+
 void setup() {
   
   // Open serial communications and wait for port to open:
-
+	lastAlarmTime = millis();
   
   Serial.begin(9600);
   Serial.println("Connecting to USB...");
@@ -145,12 +149,24 @@ void loop() {
     else
       incoming += next;
     
-    
+  }
+  
+  if(millis()- lastAlarmTime > ALARM_FREQ){
+	  makeRequest("GET /api/shouldAlarm/ HTTP/1.1", true);
+	  lastAlarmTime = millis();
   }
 
   if (stringComplete) {
     //Serial.println(incoming + "-END");
-	makeRequest("GET /api/updateTag/" + incoming.substring(0,10)+ "/1 HTTP/1.1", true);
+	String locIn = "1";
+	String locOut = "-1";
+	String loc = "0";
+	if(incoming.charAt(10) == '>')
+		loc = locOut;
+	else
+		loc = locIn;
+	
+	makeRequest("GET /api/updateTag/" + incoming.substring(0,10)+ "/" + loc + " HTTP/1.1", true);
 	//makeRequest("GET /api/echo/" + incoming.substring(0,10)+ " HTTP/1.1", true);
 	//makeRequest("GET /api/echo/aaa HTTP/1.1", true);
     // clear the string:
@@ -172,20 +188,4 @@ void loop() {
  
 }
 
- /*// if there are incoming bytes available
-  // from the server, read them and print them:
-  if (client.available()) {
-    char c = client.read();
-    Serial.print(c);
-  }
-
-  // if the server's disconnected, stop the client:
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("disconnecting.");
-    client.stop();
-
-    // do nothing forevermore:
-    while (true);
-  }*/
 

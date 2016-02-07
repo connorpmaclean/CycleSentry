@@ -1,34 +1,22 @@
-/*
-  Web client
-
- This sketch connects to a website (http://www.google.com)
- using an Arduino Wiznet Ethernet shield.
-
- Circuit:
- * Ethernet shield attached to pins 10, 11, 12, 13
-
- created 18 Dec 2009
- by David A. Mellis
- modified 9 Apr 2012
- by Tom Igoe, based on work by Adrian McEwen
-
- */
-
 #include <SPI.h>
 #include <Ethernet.h>
 #include <SoftwareSerial.h>
 
-#define ALARM_FREQ 5000
+#define ALARM_FREQ 	5000	//How often an alarm check is polled (in ms)
+#define TIMEOUT 	500		//Timeout for API requests (in ms)
+
+#define URL "www.cyclesentry.xyz"
+#define PORT 80
 
 //#include <Time.h>  
 
 // Enter a MAC address for your controller below.
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-char server[] = "www.cyclesentry.xyz";    // name address for Google (using DNS)
+char server[] = URL;    // name address for server (using DNS)
 
 // Set the static IP address to use if the DHCP fails to assign
-IPAddress ip(192, 168, 0, 177);
+IPAddress ip(192, 168, 0, 177);	//Not sure if this is correct!
 
 // Initialize the Ethernet client library
 // with the IP address and port of the server
@@ -38,9 +26,9 @@ SoftwareSerial xbeeSerial(2, 3); // RX, TX
 
 
 boolean stringComplete = false;  // whether the string is complete
-String incoming = "";
+String incoming = "";			 //Holds the incoming string
 
-unsigned long lastAlarmTime;
+unsigned long lastAlarmTime;	 //Last time the alarm check was polled.
 
 void setup() {
   
@@ -49,9 +37,6 @@ void setup() {
   
   Serial.begin(9600);
   Serial.println("Connecting to USB...");
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
 
   Serial.println("Connecting to XBEE...");
   xbeeSerial.begin(9600);
@@ -69,69 +54,14 @@ void setup() {
   // give the Ethernet shield a second to initialize:
   delay(1000);
 
-  
 
-  
-  //"GET /api/echo/"
+  Serial.println("READY!");	//Pronounced in a high-pitched Japanese voice.
 
-  //time_t t = now(); 
-  //for(int i = 0; i<1; i++){
-    //makeRequest(newStr, true);
-
-  //}
-
-  //t = now() - t;
-
-  Serial.println("READY");
-
-  
-  
 }
 
-void makeRequest(String req){
-	makeRequest(req, false);
-  
-}
 
-void makeRequest(String req, bool printResponse){
-  Serial.print("connecting...");
-
-  // if you get a connection, report back via serial:
-  if (client.connect(server, 80)) {
-    Serial.print("connected. ");
-    // Make a HTTP request:
-    client.println(req);
-    Serial.println("Sent request: " + req);
-   
-    
-    client.println("Host: www.cyclesentry.xyz");
-    client.println("Connection: close");
-    client.println();
-  } else {
-    // if you didn't get a connection to the server:
-    Serial.println("connection failed");
-  }
-
-  if(printResponse)
-    getResponse();
-  client.stop();
-}
-
-String getResponse(){
-  while(client.connected()){
-    if(client.available()){
-      char c = client.read();
-      Serial.print(c);
-    }
-    
-  }
-  Serial.println("disconnecting.");
-
-  return "";
-}
 
 void loop() {
-  //char const* tag = "999";
 
   /*if (xbeeSerial.available()) {
     String foo = xbeeSerial.readString();
@@ -139,9 +69,10 @@ void loop() {
     //makeRequest("GET /api/echo/" + foo, true);
   }*/
 
+  //Check for data from xbee
   while(xbeeSerial.available() > 0){
     char next = xbeeSerial.read();
-    if(next == '\n'){
+    if(next == '\n'){	//New line indiactes end of message
       stringComplete = true;
       break;
     }
@@ -151,11 +82,15 @@ void loop() {
     
   }
   
+  //Check for alarm update if enough time has passed.
   if(millis()- lastAlarmTime > ALARM_FREQ){
-	  makeRequest("GET /api/shouldAlarm/ HTTP/1.1", true);
+	  char alarmChar = makeRequest("GET /api/random/ HTTP/1.1", true);
+	  xbeeSerial.print(alarmChar);
+	  Serial.println(alarmChar);
 	  lastAlarmTime = millis();
   }
 
+  //Handle a string completion event
   if (stringComplete) {
     //Serial.println(incoming + "-END");
 	String locIn = "1";
@@ -181,11 +116,60 @@ void loop() {
     makeRequest(newStr, true);
     makeRequest("GET /api/echo/" + foo, true);
   }*/
-    
+}
 
+
+char makeRequest(String req){
+	return makeRequest(req, false);
   
+}
+
+char makeRequest(String req, bool needResponse){
+  //Serial.print("connecting...");
+
+  // if you get a connection, report back via serial:
+  if (client.connect(server, PORT)) {
+    //Serial.print("connected. ");
+    // Make a HTTP request:
+    client.println(req);
+    Serial.println("Sent request: " + req);
+   
+    
+    client.println("Host: www.cyclesentry.xyz");
+    client.println("Connection: close");
+    client.println();
+  } else {
+    // if you didn't get a connection to the server:
+    //Serial.println("connection failed");
+  }
+	
+  char retChar = 0;
+  if(needResponse)
+    retChar = getResponse();
+  client.stop();
   
- 
+  return retChar;
+  
+}
+
+char getResponse(){
+	char lastChar = 0;
+	
+	unsigned long startTime = millis();
+  while(client.connected()){
+	if(millis() - startTime > TIMEOUT){
+		Serial.println("Timeout");
+		break;
+	}
+    if(client.available()){
+      lastChar = client.read();
+      //Serial.print(c);
+    }
+    
+  }
+  //Serial.println("disconnecting.");
+
+  return lastChar;
 }
 
 

@@ -25,30 +25,31 @@
 #define BUFSIZE    10  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
 #define TABLESIZE  101  // Size of receive buffer (in bytes) (10-byte unique ID + null character)
 #define TIMEOUT 2000
+#define ALARM_DUR 400
 
 #define RFID_START  0x0A  // RFID Reader Start and Stop bytes
 #define RFID_STOP   0x0D
 
 
-String current = "";
-//String previous = "";
-
+String current = "";	//Incoming string from RFID reader.
 String rfidData;
-bool alarmOn;
+bool alarmOn;			//Boolean indicating the alarm is on
+unsigned long lastAlarmTime;
 
-unsigned long timeoutTable[TABLESIZE];
-char idTable[TABLESIZE][BUFSIZE];
+unsigned long timeoutTable[TABLESIZE];	//Table indicating the last time a tag was seen.
+char idTable[TABLESIZE][BUFSIZE];		//Corresponding string table to above.
 
 void setup()  // Set up code called once on start-up
 {
   pinMode(tonePin, OUTPUT);
   noTone(tonePin);
-  // define pin modes
   pinMode(enablePin, OUTPUT);
   pinMode(rxPin, INPUT);
   
   pinMode(highPin, OUTPUT);
   pinMode(toneSwitchPin, INPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
   digitalWrite(highPin, HIGH);
   
   alarmOn = false;
@@ -63,7 +64,6 @@ void setup()  // Set up code called once on start-up
   
   // setup Arduino Serial Monitor
   Serial.begin(9600);
-  while (!Serial);   // wait until ready
   Serial.println("READER READY");
   
   // set the baud rate for the SoftwareSerial port
@@ -72,6 +72,7 @@ void setup()  // Set up code called once on start-up
   //Serial.flush();   // wait for all bytes to be transmitted to the Serial Monitor
   
   
+  digitalWrite(13, HIGH);
   digitalWrite(enablePin, LOW);   // enable the RFID Reader
   
   // Wait for a response from the RFID Reader
@@ -86,7 +87,7 @@ void loop()  // Main code, to run repeatedly
 {
   
   
-	
+	//Handles data from the RFID Reader
     while (Serial1.available() > 0) // If there are any bytes available to read, then the RFID Reader has probably seen a valid tag
     {
       char nextByte = Serial1.read();  // Get the byte and store it in our buffer
@@ -108,16 +109,34 @@ void loop()  // Main code, to run repeatedly
 		  rfidData = "CORRUPT";
     }
 	
-	while(Serial.available() > 1){
-		if(Serial.read() == 'A' && Serial.read() == 'R')
+	//Handles data from the xbee.
+	while(Serial.available() > 0){
+		char inc = Serial.read();
+		if(inc == '1'){
 			alarmOn = true;
+		}
+		
+		else if(inc == '0'){
+			alarmOn = false;
+		}
+			
 	}
+	
+	//Play Alarm
+	if(alarmOn && millis() - lastAlarmTime > ALARM_DUR * 2){
+		if(digitalRead(toneSwitchPin) == HIGH)
+			tone(tonePin, 220, ALARM_DUR);	//Play a low tone to indicate its working.
+		
+		lastAlarmTime = millis();
+	}
+		
   
+	//Update the timeout table.
 	unsigned long nowMS = millis();
 	for(int i = 0; i<TABLESIZE; i++){
 	  if(timeoutTable[i] != 0){
+			//If there is a timeout, send a message with >
 		  if(nowMS - timeoutTable[i] > TIMEOUT){
-			  //Serial.print("Timeout - ");
 			  Serial.println(cToInoString(idTable[i]) + ">");
 			  timeoutTable[i] = 0;
 		  }
@@ -133,22 +152,24 @@ void loop()  // Main code, to run repeatedly
   
 }
 
+//Handles event when a tag from the RFID is completed.
 void tagComplete(){
-	//previous = current;
     current = String(rfidData);
 		
 	if(timeoutTable[idHash(current)] == 0){
 		if(digitalRead(toneSwitchPin) == HIGH)
-			tone(tonePin, toneHz, toneLength);
+			tone(tonePin, toneHz, toneLength);	//Tag read tone
 		Serial.println(current + "<");
 		//Serial.println(idHash(current));
 	}
 	//Serial.flush();                 // Wait for all bytes to be transmitted to the Serial Monitor
 	
+	//Update table.
 	timeoutTable[idHash(current)] = millis();
 	current.toCharArray(idTable[idHash(current)], BUFSIZE+1);
 }
-//FIX HASHING FUNCTION
+
+//FIX HASHING FUNCTION!!!
 int idHash(String id){
 	int result = 1;
 	for(int i = 0; i < BUFSIZE; i++){
@@ -157,6 +178,7 @@ int idHash(String id){
 	result = result % TABLESIZE;
 }
 
+//Converts c string to an arduino string.
 String cToInoString(char* cstring){
 	int i = 0;
 	String inoString = "";

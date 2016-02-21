@@ -84,7 +84,7 @@ void loop() {
   
   //Check for alarm update if enough time has passed.
   if(millis()- lastAlarmTime > ALARM_FREQ){
-	  char alarmChar = makeRequest("GET /api/random/ HTTP/1.1", true);
+	  char alarmChar = makeRequest("GET /api/shouldAlarm/ HTTP/1.1", true);
 	  xbeeSerial.print(alarmChar);
 	  Serial.println(alarmChar);
 	  lastAlarmTime = millis();

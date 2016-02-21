@@ -14,8 +14,9 @@
 #define enablePin  9   // Connects to the RFID's ENABLE pin
 #define rxPin      19  // Serial input (connects to the RFID's SOUT pin)
 #define txPin      20  // Serial output (unused)
+#define lightPin   13
 
-#define tonePin	   10
+#define tonePin	   15
 #define toneHz	   440
 #define toneLength 500
 
@@ -72,7 +73,7 @@ void setup()  // Set up code called once on start-up
   //Serial.flush();   // wait for all bytes to be transmitted to the Serial Monitor
   
   
-  digitalWrite(13, HIGH);
+  
   digitalWrite(enablePin, LOW);   // enable the RFID Reader
   
   // Wait for a response from the RFID Reader
@@ -113,11 +114,14 @@ void loop()  // Main code, to run repeatedly
 	while(Serial.available() > 0){
 		char inc = Serial.read();
 		if(inc == '1'){
+			
 			alarmOn = true;
+			digitalWrite(13, HIGH);
 		}
 		
 		else if(inc == '0'){
 			alarmOn = false;
+			digitalWrite(13, LOW);
 		}
 			
 	}

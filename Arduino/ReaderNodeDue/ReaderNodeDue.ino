@@ -31,6 +31,9 @@
 #define RFID_START  0x0A  // RFID Reader Start and Stop bytes
 #define RFID_STOP   0x0D
 
+#define rfidSerial Serial1
+#define xbeeSerial Serial
+
 
 String current = "";	//Incoming string from RFID reader.
 String rfidData;
@@ -64,16 +67,16 @@ void setup()  // Set up code called once on start-up
   digitalWrite(enablePin, HIGH);  // disable RFID Reader
   
   // setup Arduino Serial Monitor
-  Serial.begin(9600);
-  Serial.println("READER READY");
+  xbeeSerial.begin(9600);
+  xbeeSerial.println("READER READY");
   
   // set the baud rate for the SoftwareSerial port
-  Serial1.begin(2400);
+  rfidSerial.begin(2400);
 
   //Serial.flush();   // wait for all bytes to be transmitted to the Serial Monitor
   
   
-  
+  waitForConnection();
   digitalWrite(enablePin, LOW);   // enable the RFID Reader
   
   // Wait for a response from the RFID Reader
@@ -84,14 +87,29 @@ void setup()  // Set up code called once on start-up
  
 }
 
+void waitForConnection(){
+	xbeeSerial.println("?");
+	unsigned long nowMS = millis();
+	while(millis() - nowMS < 1000){
+		if(Serial.available() >= 1){
+			if(Serial.read() == 'Y'){
+				tone(tonePin, 660, 300);
+				return;
+			}
+			break;
+		}
+	}
+	tone(tonePin, 100, 2000);
+}
+
 void loop()  // Main code, to run repeatedly
 {
   
   
 	//Handles data from the RFID Reader
-    while (Serial1.available() > 0) // If there are any bytes available to read, then the RFID Reader has probably seen a valid tag
+    while (rfidSerial.available() > 0) // If there are any bytes available to read, then the RFID Reader has probably seen a valid tag
     {
-      char nextByte = Serial1.read();  // Get the byte and store it in our buffer
+      char nextByte = rfidSerial.read();  // Get the byte and store it in our buffer
       
       if (nextByte == RFID_START)    // If we receive the start byte from the RFID Reader, then get ready to receive the tag's unique ID
       {
@@ -111,7 +129,7 @@ void loop()  // Main code, to run repeatedly
     }
 	
 	//Handles data from the xbee.
-	while(Serial.available() > 0){
+	while(xbeeSerial.available() > 0){
 		char inc = Serial.read();
 		if(inc == '1'){
 			
@@ -163,7 +181,7 @@ void tagComplete(){
 	if(timeoutTable[idHash(current)] == 0){
 		if(digitalRead(toneSwitchPin) == HIGH)
 			tone(tonePin, toneHz, toneLength);	//Tag read tone
-		Serial.println(current + "<");
+		xbeeSerial.println(current + "<");
 		//Serial.println(idHash(current));
 	}
 	//Serial.flush();                 // Wait for all bytes to be transmitted to the Serial Monitor

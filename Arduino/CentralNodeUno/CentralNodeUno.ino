@@ -2,7 +2,7 @@
 #include <Ethernet.h>
 #include <SoftwareSerial.h>
 
-#define ALARM_FREQ 	5000	//How often an alarm check is polled (in ms)
+#define ALARM_FREQ 	1000	//How often an alarm check is polled (in ms)
 #define TIMEOUT 	500		//Timeout for API requests (in ms)
 
 #define URL "www.cyclesentry.xyz"
@@ -92,6 +92,19 @@ void loop() {
 
   //Handle a string completion event
   if (stringComplete) {
+	stringComplete = false;
+	if(incoming.charAt(0)== '?'){
+		char connectionChar = makeRequest("GET /api/echo/connected/ HTTP/1.1");
+		if(connectionChar == 0){
+			xbeeSerial.print('Y');
+		}
+		else
+			xbeeSerial.print('N');
+		
+		incoming = "";
+		return;
+	}
+	
     //Serial.println(incoming + "-END");
 	String locIn = "1";
 	String locOut = "-1";
@@ -106,7 +119,7 @@ void loop() {
 	//makeRequest("GET /api/echo/aaa HTTP/1.1", true);
     // clear the string:
     incoming = "";
-    stringComplete = false;
+    
   }
 
   //Get from USB

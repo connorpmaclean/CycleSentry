@@ -8,15 +8,13 @@
 #define URL "www.cyclesentry.xyz"
 #define PORT 80
 
-//#include <Time.h>  
-
 // Enter a MAC address for your controller below.
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 char server[] = URL;    // name address for server (using DNS)
 
 // Set the static IP address to use if the DHCP fails to assign
-IPAddress ip(192, 168, 0, 177);	//Not sure if this is correct!
+IPAddress ip(159, 203, 112, 6);	//Not sure if this is correct!
 
 // Initialize the Ethernet client library
 // with the IP address and port of the server
@@ -25,7 +23,7 @@ EthernetClient client;
 SoftwareSerial xbeeSerial(2, 3); // RX, TX
 
 
-boolean stringComplete = false;  // whether the string is complete
+boolean stringComplete = false;  //Whether the string is complete
 String incoming = "";			 //Holds the incoming string
 
 unsigned long lastAlarmTime;	 //Last time the alarm check was polled.
@@ -33,7 +31,7 @@ unsigned long lastAlarmTime;	 //Last time the alarm check was polled.
 void setup() {
   
   // Open serial communications and wait for port to open:
-	lastAlarmTime = millis();
+  lastAlarmTime = millis();
   
   Serial.begin(9600);
   Serial.println("Connecting to USB...");
@@ -106,6 +104,7 @@ void loop() {
 	}
 	
     //Serial.println(incoming + "-END");
+	//Set Location
 	String locIn = "1";
 	String locOut = "-1";
 	String loc = "0";
@@ -131,12 +130,12 @@ void loop() {
   }*/
 }
 
-
+//Makes the request without a response
 char makeRequest(String req){
 	return makeRequest(req, false);
-  
 }
 
+//Returns a character as the response, if response not wanted, returns 0.
 char makeRequest(String req, bool needResponse){
   //Serial.print("connecting...");
 
@@ -165,6 +164,7 @@ char makeRequest(String req, bool needResponse){
   
 }
 
+//Gets the response from the HTTP request.
 char getResponse(){
 	char lastChar = 0;
 	
@@ -182,7 +182,7 @@ char getResponse(){
   }
   //Serial.println("disconnecting.");
 
-  return lastChar;
+  return lastChar; //Returns the last character
 }
 
 
